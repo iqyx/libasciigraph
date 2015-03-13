@@ -37,6 +37,10 @@ static const char *histogram_chars_horizontal[] = {
 	" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉"
 };
 
+static const int32_t powers_10[10] = {
+	1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
+};
+
 static const char *box_chars[] = {
 	" ",
 	"╴", /* LINE_LEFT */
@@ -57,13 +61,29 @@ static const char *box_chars[] = {
 };
 
 
+static void int_to_char(const char **c, int32_t n, int8_t decimal) {
+	uint8_t digit = n / powers_10[decimal] % 10;
+	*c = (const char[]){digit + '0', '\0'};
+	if (n / powers_10[decimal] == 0 && decimal > 0) {
+		*c = FILL_EMPTY;
+	}
+}
+
+
+static int32_t xtic_label(int32_t pos, int32_t data_len, uint16_t width) {
+	/** @todo there is a bug in computing xtic labels when
+	 *        data->data_len == style->width */
+	return (pos) * data_len / width + 1;
+}
+
+
 int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_style *style) {
 
 	int32_t nw = ((style->borders & ASCIIGRAPH_LEFT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_LEFT) ? style->border_width : 0);
 	int32_t nh = ((style->borders & ASCIIGRAPH_BOTTOM) ? 1 : 0) + ((style->tics & ASCIIGRAPH_BOTTOM) ? style->border_height : 0);
 
-	int32_t w = style->width + ((style->borders & ASCIIGRAPH_RIGHT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_RIGHT) ? 1 + style->border_width : 0);
-	int32_t h = style->height + ((style->borders & ASCIIGRAPH_TOP) ? 1 : 0) + ((style->tics & ASCIIGRAPH_TOP) ? 1 + style->border_height : 0);
+	int32_t w = style->width + ((style->borders & ASCIIGRAPH_RIGHT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_RIGHT) ? style->border_width : 0);
+	int32_t h = style->height + ((style->borders & ASCIIGRAPH_TOP) ? 1 : 0) + ((style->tics & ASCIIGRAPH_TOP) ? style->border_height : 0);
 
 	const char *last_clr = 0;
 	const char *clr = 0;
@@ -88,9 +108,9 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 
 			/* Y-tics */
 			if (style->tics & ASCIIGRAPH_LEFT && y >= 0 && y < style->height) {
-				if ((y % ASCIIGRAPH_YTICS_INT) == 0) {
+				if ((y % style->ytic_interval) == 0) {
 					if (x < -1) {
-						c = "x";
+						int_to_char(&c, data->min + y * (data->max - data->min) / style->height, -2 - x);
 						clr = style->color_tics;
 					}
 					if (x == -1 && y != 0) {
@@ -100,13 +120,30 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 				}
 			}
 
-			/* X-tics */
-			if (style->tics & ASCIIGRAPH_LEFT && x >= 0 && x < style->width) {
-				if ((x % ASCIIGRAPH_XTICS_INT) == 0) {
-					if (y < -1) {
-						c = "x";
+			if (style->tics & ASCIIGRAPH_RIGHT && y >= 0 && y < style->height) {
+				if ((y % style->ytic_interval) == 0) {
+					if (x > style->width) {
+						int_to_char(&c, data->min + y * (data->max - data->min) / style->height, (style->width + style->border_width) - x);
 						clr = style->color_tics;
 					}
+					if (x == style->width && y != 0) {
+						directions |= LINE_RIGHT;
+						clr = style->color_box;
+					}
+				}
+			}
+
+			/* X-tics */
+			if (style->tics & ASCIIGRAPH_BOTTOM && x >= 0 && x < style->width) {
+
+				if (style->xtic_interval - (x % style->xtic_interval) <= style->border_width) {
+					if (y < -1) {
+						int_to_char(&c, xtic_label(x, data->data_len, style->width), style->xtic_interval - 1 - (x % style->xtic_interval));
+						clr = style->color_tics;
+					}
+				}
+
+				if ((x % style->xtic_interval) == 0) {
 					if (y == -1 && x != 0) {
 						directions |= LINE_DOWN;
 						clr = style->color_box;
@@ -114,14 +151,32 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 				}
 			}
 
-			if ((style->grid & ASCIIGRAPH_HORIZONTAL) && x >= -1 && x <= style->width && y > 0) {
-				if ((y % ASCIIGRAPH_YTICS_INT) == 0) {
+			if (style->tics & ASCIIGRAPH_TOP && x >= 0 && x < style->width) {
+
+				if (style->xtic_interval - (x % style->xtic_interval) <= style->border_width) {
+					if (y > style->height) {
+						int_to_char(&c, xtic_label(x, data->data_len, style->width), style->xtic_interval - 1 - (x % style->xtic_interval));
+						clr = style->color_tics;
+					}
+				}
+
+				if ((x % style->xtic_interval) == 0) {
+					if (y == style->height && x != 0) {
+						directions |= LINE_UP;
+						clr = style->color_box;
+					}
+				}
+			}
+
+
+			if ((style->grid & ASCIIGRAPH_HORIZONTAL) && x >= -1 && x <= style->width && y > 0 && y <= style->height) {
+				if ((y % style->ytic_interval) == 0) {
 					directions |= LINE_LEFT | LINE_RIGHT;
 				}
 			}
 
-			if ((style->grid & ASCIIGRAPH_VERTICAL) && y >= -1 && y <= style->height && x > 0) {
-				if ((x % ASCIIGRAPH_XTICS_INT) == 0) {
+			if ((style->grid & ASCIIGRAPH_VERTICAL) && y >= -1 && y <= style->height && x > 0 && x <= style->width) {
+				if ((x % style->xtic_interval) == 0) {
 					directions |= LINE_UP | LINE_DOWN;
 				}
 			}
@@ -147,8 +202,12 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 				c = FILL_SHADE;
 				clr = style->color_graph;
 
-				if (style->type == ASCIIGRAPH_HISTOGRAM_VERTICAL) {
+				if (style->type == ASCIIGRAPH_HISTOGRAM_VERTICAL || style->type == ASCIIGRAPH_BARS_VERTICAL) {
 					int32_t value = data->data[x * data->data_len / style->width];
+
+					if (((x * data->data_len) % style->width) != 0 && style->type == ASCIIGRAPH_BARS_VERTICAL) {
+						value = 0;
+					}
 
 					if (value < data->min) {
 						value = data->min;
@@ -236,9 +295,9 @@ struct asciigraph_dataset data1 = {
 		234, 120, 0, 66, 110, 150, 160, 160, 170, 140,
 		230, 480, 520, 630, 800, 965, 730, 650, 420, 580,
 	},
-	.data_len = 80,
+	.data_len = 160,
 	.min = 0,
-	.max = 1200,
+	.max = 1000,
 };
 
 
@@ -250,12 +309,14 @@ struct asciigraph_style style1 = {
 	//~ .borders = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
 	//~ .ticks = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
 	.tics = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM,
-	.grid = ASCIIGRAPH_HORIZONTAL | ASCIIGRAPH_VERTICAL,
-	.border_width = 5,
+	.grid = ASCIIGRAPH_HORIZONTAL,
+	.border_width = 4,
 	.border_height = 1,
 	.color_graph = "\x1b[34m",
 	.color_box = "\x1b[33m",
-	.color_tics = "\x1b[31m",
+	.color_tics = "\x1b[33m",
+	.xtic_interval = 10,
+	.ytic_interval = 2,
 };
 
 

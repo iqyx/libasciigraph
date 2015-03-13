@@ -29,9 +29,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ASCIIGRAPH_XTICS_INT 10
-#define ASCIIGRAPH_YTICS_INT 3
-
 #define ASCIIGRAPH_NEWLINE "\n"
 
 #define FILL_SHADE "░"
@@ -68,6 +65,8 @@ struct asciigraph_dataset {
 enum asciigraph_type {
 	ASCIIGRAPH_HISTOGRAM_VERTICAL,
 	ASCIIGRAPH_HISTOGRAM_HORIZONTAL,
+	ASCIIGRAPH_BARS_VERTICAL,
+	ASCIIGRAPH_BARS_HORIZONTAL,
 };
 
 struct asciigraph_style {
@@ -85,6 +84,9 @@ struct asciigraph_style {
 	const char *color_graph;
 	const char *color_box;
 	const char *color_tics;
+
+	uint16_t xtic_interval;
+	uint16_t ytic_interval;
 };
 
 int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_style *style);
