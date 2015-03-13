@@ -24,7 +24,6 @@
  */
 
 #include <stdio.h>
-#include <stdint.h>
 
 #include "asciigraph.h"
 
@@ -69,26 +68,26 @@ static void int_to_char(const char **c, int32_t n, int8_t decimal) {
 }
 
 
-static int32_t xtic_label(int32_t pos, int32_t data_len, uint16_t width) {
+static int32_t xtic_label(int16_t pos, uint32_t data_len, uint16_t width) {
 	/** @todo there is a bug in computing xtic labels when
 	 *        data->data_len == style->width */
-	return (pos) * data_len / width + 1;
+	return pos * data_len / width + 1;
 }
 
 
-int32_t asciigraph_print(const struct asciigraph_dataset *data, const struct asciigraph_style *style) {
+int32_t asciigraph_print(const struct asciigraph_dataset *data, const struct asciigraph_style *style, void (*print)(const char *s)) {
 
-	int32_t nw = ((style->borders & ASCIIGRAPH_LEFT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_LEFT) ? style->border_width : 0);
-	int32_t nh = ((style->borders & ASCIIGRAPH_BOTTOM) ? 1 : 0) + ((style->tics & ASCIIGRAPH_BOTTOM) ? style->border_height : 0);
+	int16_t nw = ((style->borders & ASCIIGRAPH_LEFT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_LEFT) ? style->border_width : 0);
+	int16_t nh = ((style->borders & ASCIIGRAPH_BOTTOM) ? 1 : 0) + ((style->tics & ASCIIGRAPH_BOTTOM) ? style->border_height : 0);
 
-	int32_t w = style->width + ((style->borders & ASCIIGRAPH_RIGHT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_RIGHT) ? style->border_width : 0);
-	int32_t h = style->height + ((style->borders & ASCIIGRAPH_TOP) ? 1 : 0) + ((style->tics & ASCIIGRAPH_TOP) ? style->border_height : 0);
+	int16_t w = style->width + ((style->borders & ASCIIGRAPH_RIGHT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_RIGHT) ? style->border_width : 0);
+	int16_t h = style->height + ((style->borders & ASCIIGRAPH_TOP) ? 1 : 0) + ((style->tics & ASCIIGRAPH_TOP) ? style->border_height : 0);
 
 	const char *last_clr = 0;
 	const char *clr = 0;
 
-	for (int32_t y = h - 1; y >= 0 - nh; y--) {
-		for (int32_t x = 0 - nw; x < w; x++) {
+	for (int16_t y = h - 1; y >= 0 - nh; y--) {
+		for (int16_t x = 0 - nw; x < w; x++) {
 
 			const char *c = FILL_EMPTY;
 
@@ -260,15 +259,15 @@ int32_t asciigraph_print(const struct asciigraph_dataset *data, const struct asc
 			}
 
 			if (clr != last_clr) {
-				printf("%s", clr);
+				print(clr);
 				last_clr = clr;
 			}
 
-			printf(c);
+			print(c);
 		}
-		printf(ASCIIGRAPH_NEWLINE);
+		print(ASCIIGRAPH_NEWLINE);
 	}
-	printf("\x1b[0m");
+	print("\x1b[0m");
 
 	return 0;
 }

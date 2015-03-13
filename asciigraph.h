@@ -36,8 +36,8 @@
 /* The full block fill is implemented as an inverted space. There is an UTF8
  * character for full block but it renders incorrectly with most fonts - there
  * is a gap between lines. */
-//~ #define FILL_FULL "█"
-#define FILL_FULL "\x1b[7m \x1b[27m"
+#define FILL_FULL "█"
+//~ #define FILL_FULL "\x1b[7m \x1b[27m"
 
 
 #define LINE_LEFT 1
@@ -47,7 +47,7 @@
 
 struct asciigraph_dataset {
 	int32_t *data;
-	size_t data_len;
+	uint32_t data_len;
 
 	int32_t min;
 	int32_t max;
@@ -89,7 +89,7 @@ struct asciigraph_style {
 	uint16_t ytic_interval;
 };
 
-int32_t asciigraph_print(const struct asciigraph_dataset *data, const struct asciigraph_style *style);
+int32_t asciigraph_print(const struct asciigraph_dataset *data, const struct asciigraph_style *style, void (*print)(const char *s));
 
 
 

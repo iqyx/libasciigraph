@@ -23,7 +23,7 @@ const struct asciigraph_dataset data1 = {
 		234, 120, 0, 66, 110, 150, 160, 160, 170, 140,
 		230, 480, 520, 630, 800, 965, 730, 650, 420, 580,
 	},
-	.data_len = 160,
+	.data_len = 80,
 	.min = 0,
 	.max = 1000,
 };
@@ -32,14 +32,14 @@ const struct asciigraph_dataset data1 = {
 const struct asciigraph_style style1 = {
 	.type = ASCIIGRAPH_HISTOGRAM_VERTICAL,
 	.width = 80,
-	.height = 10,
-	.borders = ASCIIGRAPH_BOTTOM | ASCIIGRAPH_LEFT | ASCIIGRAPH_TOP | ASCIIGRAPH_RIGHT,
+	.height = 1,
+	.borders = ASCIIGRAPH_BOTTOM | ASCIIGRAPH_LEFT | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
 	//~ .borders = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
 	//~ .ticks = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
 	.tics = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM,
 	.grid = ASCIIGRAPH_HORIZONTAL,
-	.border_width = 4,
-	.border_height = 1,
+	.border_width = 0,
+	.border_height = 0	,
 	.color_graph = "\x1b[34m",
 	.color_box = "\x1b[33m",
 	.color_tics = "\x1b[33m",
@@ -48,7 +48,11 @@ const struct asciigraph_style style1 = {
 };
 
 
+static void print_callback(const char *s) {
+	printf("%s", s);
+}
+
 int main() {
-	asciigraph_print(&data1, &style1);
+	asciigraph_print(&data1, &style1, print_callback);
 }
 
