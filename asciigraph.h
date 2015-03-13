@@ -29,12 +29,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define ASCIIGRAPH_XTICS_INT 10
+#define ASCIIGRAPH_YTICS_INT 3
 
 #define ASCIIGRAPH_NEWLINE "\n"
 
 #define FILL_SHADE "░"
 #define FILL_EMPTY " "
-#define FILL_FULL "█"
+/* The full block fill is implemented as an inverted space. There is an UTF8
+ * character for full block but it renders incorrectly with most fonts - there
+ * is a gap between lines. */
+//~ #define FILL_FULL "█"
+#define FILL_FULL "\x1b[7m \x1b[27m"
+
 
 #define LINE_LEFT 1
 #define LINE_RIGHT 2
@@ -55,6 +62,9 @@ struct asciigraph_dataset {
 #define ASCIIGRAPH_TOP 4
 #define ASCIIGRAPH_BOTTOM 8
 
+#define ASCIIGRAPH_HORIZONTAL 16
+#define ASCIIGRAPH_VERTICAL 32
+
 enum asciigraph_type {
 	ASCIIGRAPH_HISTOGRAM_VERTICAL,
 	ASCIIGRAPH_HISTOGRAM_HORIZONTAL,
@@ -67,9 +77,14 @@ struct asciigraph_style {
 	uint16_t height;
 
 	uint8_t borders;
-	uint8_t ticks;
+	uint8_t tics;
+	uint8_t grid;
 	uint16_t border_width;
 	uint16_t border_height;
+
+	const char *color_graph;
+	const char *color_box;
+	const char *color_tics;
 };
 
 int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_style *style);

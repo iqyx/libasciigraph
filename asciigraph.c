@@ -59,11 +59,14 @@ static const char *box_chars[] = {
 
 int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_style *style) {
 
-	int32_t nw = ((style->borders & ASCIIGRAPH_LEFT) ? 1 : 0) + ((style->ticks & ASCIIGRAPH_LEFT) ? style->border_width : 0);
-	int32_t nh = ((style->borders & ASCIIGRAPH_BOTTOM) ? 1 : 0) + ((style->ticks & ASCIIGRAPH_BOTTOM) ? style->border_height : 0);
+	int32_t nw = ((style->borders & ASCIIGRAPH_LEFT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_LEFT) ? style->border_width : 0);
+	int32_t nh = ((style->borders & ASCIIGRAPH_BOTTOM) ? 1 : 0) + ((style->tics & ASCIIGRAPH_BOTTOM) ? style->border_height : 0);
 
-	int32_t w = style->width + ((style->borders & ASCIIGRAPH_RIGHT) ? 1 : 0) + ((style->ticks & ASCIIGRAPH_RIGHT) ? 1 + style->border_width : 0);
-	int32_t h = style->height + ((style->borders & ASCIIGRAPH_TOP) ? 1 : 0) + ((style->ticks & ASCIIGRAPH_TOP) ? 1 + style->border_height : 0);
+	int32_t w = style->width + ((style->borders & ASCIIGRAPH_RIGHT) ? 1 : 0) + ((style->tics & ASCIIGRAPH_RIGHT) ? 1 + style->border_width : 0);
+	int32_t h = style->height + ((style->borders & ASCIIGRAPH_TOP) ? 1 : 0) + ((style->tics & ASCIIGRAPH_TOP) ? 1 + style->border_height : 0);
+
+	const char *last_clr = 0;
+	const char *clr = 0;
 
 	for (int32_t y = h - 1; y >= 0 - nh; y--) {
 		for (int32_t x = 0 - nw; x < w; x++) {
@@ -76,36 +79,73 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 			/* Add directions for vertical and horizontal lines. */
 			if (x == -1 || x == style->width) {
 				directions |= LINE_UP | LINE_DOWN;
+				clr = style->color_box;
 			}
 			if (y == -1 || y == style->height) {
 				directions |= LINE_LEFT | LINE_RIGHT;
+				clr = style->color_box;
 			}
 
+			/* Y-tics */
+			if (style->tics & ASCIIGRAPH_LEFT && y >= 0 && y < style->height) {
+				if ((y % ASCIIGRAPH_YTICS_INT) == 0) {
+					if (x < -1) {
+						c = "x";
+						clr = style->color_tics;
+					}
+					if (x == -1 && y != 0) {
+						directions |= LINE_LEFT;
+						clr = style->color_box;
+					}
+				}
+			}
+
+			/* X-tics */
+			if (style->tics & ASCIIGRAPH_LEFT && x >= 0 && x < style->width) {
+				if ((x % ASCIIGRAPH_XTICS_INT) == 0) {
+					if (y < -1) {
+						c = "x";
+						clr = style->color_tics;
+					}
+					if (y == -1 && x != 0) {
+						directions |= LINE_DOWN;
+						clr = style->color_box;
+					}
+				}
+			}
+
+			if ((style->grid & ASCIIGRAPH_HORIZONTAL) && x >= -1 && x <= style->width && y > 0) {
+				if ((y % ASCIIGRAPH_YTICS_INT) == 0) {
+					directions |= LINE_LEFT | LINE_RIGHT;
+				}
+			}
+
+			if ((style->grid & ASCIIGRAPH_VERTICAL) && y >= -1 && y <= style->height && x > 0) {
+				if ((x % ASCIIGRAPH_XTICS_INT) == 0) {
+					directions |= LINE_UP | LINE_DOWN;
+				}
+			}
 
 			/* Remove directions if no ticks are displayed (the space
 			 * behind the border is zero. */
-			if (x == -1 && !(style->ticks & ASCIIGRAPH_LEFT)) {
+			if (x == -1 && !(style->tics & ASCIIGRAPH_LEFT)) {
 				directions &= ~LINE_LEFT;
 			}
-			if (x == style->width && !(style->ticks & ASCIIGRAPH_RIGHT)) {
+			if (x == style->width && !(style->tics & ASCIIGRAPH_RIGHT)) {
 				directions &= ~LINE_RIGHT;
 			}
-			if (y == -1 && !(style->ticks & ASCIIGRAPH_BOTTOM)) {
+			if (y == -1 && !(style->tics & ASCIIGRAPH_BOTTOM)) {
 				directions &= ~LINE_DOWN;
 			}
-			if (y == style->height && !(style->ticks & ASCIIGRAPH_TOP)) {
+			if (y == style->height && !(style->tics & ASCIIGRAPH_TOP)) {
 				directions &= ~LINE_UP;
 			}
 
-			/* Set a box drawing character according to the computed
-			 * lines directions. */
-			if (directions != 0) {
-				c = box_chars[directions];
-			}
 
 			/* This is the valid area where the graph is drawn. */
 			if ((x >= 0 && x < style->width) && (y >= 0 && y < style->height)) {
 				c = FILL_SHADE;
+				clr = style->color_graph;
 
 				if (style->type == ASCIIGRAPH_HISTOGRAM_VERTICAL) {
 					int32_t value = data->data[x * data->data_len / style->width];
@@ -120,10 +160,13 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 					value = value * style->height * 8 / (data->max - data->min);
 
 					if (value >= ((y + 1) * 8)) {
+						directions = 0;
 						c = FILL_FULL;
 					} else if (value <= (y * 8)) {
 						c = FILL_EMPTY;
+						clr = style->color_box;
 					} else {
+						directions = 0;
 						c = histogram_chars_vertical[value % 8];
 					}
 				}
@@ -144,15 +187,30 @@ int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_styl
 						c = FILL_FULL;
 					} else if (value <= (x * 8)) {
 						c = FILL_EMPTY;
+						clr = style->color_box;
 					} else {
 						c = histogram_chars_horizontal[value % 8];
 					}
 				}
 			}
+
+			/* Set a box drawing character according to the computed
+			 * line directions (if line drawing is requested, box
+			 * character is drawn instead of the one set to c. */
+			if (directions != 0) {
+				c = box_chars[directions];
+			}
+
+			if (clr != last_clr) {
+				printf("%s", clr);
+				last_clr = clr;
+			}
+
 			printf(c);
 		}
 		printf(ASCIIGRAPH_NEWLINE);
 	}
+	printf("\x1b[0m");
 
 	return 0;
 }
@@ -180,7 +238,7 @@ struct asciigraph_dataset data1 = {
 	},
 	.data_len = 80,
 	.min = 0,
-	.max = 10000,
+	.max = 1200,
 };
 
 
@@ -188,12 +246,16 @@ struct asciigraph_style style1 = {
 	.type = ASCIIGRAPH_HISTOGRAM_VERTICAL,
 	.width = 80,
 	.height = 10,
-	.borders = ASCIIGRAPH_BOTTOM | ASCIIGRAPH_LEFT | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
+	.borders = ASCIIGRAPH_BOTTOM | ASCIIGRAPH_LEFT | ASCIIGRAPH_TOP | ASCIIGRAPH_RIGHT,
 	//~ .borders = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
 	//~ .ticks = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM | ASCIIGRAPH_RIGHT | ASCIIGRAPH_TOP,
-	.ticks = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM,
+	.tics = ASCIIGRAPH_LEFT | ASCIIGRAPH_BOTTOM,
+	.grid = ASCIIGRAPH_HORIZONTAL | ASCIIGRAPH_VERTICAL,
 	.border_width = 5,
 	.border_height = 1,
+	.color_graph = "\x1b[34m",
+	.color_box = "\x1b[33m",
+	.color_tics = "\x1b[31m",
 };
 
 
