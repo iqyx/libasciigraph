@@ -89,7 +89,7 @@ struct asciigraph_style {
 	uint16_t ytic_interval;
 };
 
-int32_t asciigraph_print(struct asciigraph_dataset *data, struct asciigraph_style *style);
+int32_t asciigraph_print(const struct asciigraph_dataset *data, const struct asciigraph_style *style);
 
 
 
